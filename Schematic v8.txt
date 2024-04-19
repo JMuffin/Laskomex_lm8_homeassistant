@@ -1,0 +1,22 @@
+Part       Value
+
+C1         220n
+C2         10u
+D1         1N4148
+IC1        LM393_DIP
+Q1         BC848-NPN
+Q2         BC848-NPN
+Q3         BC848-NPN
+R1         10k
+R2         68k
+R3         1k
+R4         47k
+R5         47k
+R6         47k
+R7         1M
+R8         4k7
+R9         4k7
+R10        4k7
+R11        4k7
+T1         BC547-NPN
+TR1        PC817
