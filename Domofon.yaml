@@ -1,0 +1,116 @@
+esphome:
+  name: domofon
+  friendly_name: Domofon
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+#  encryption:
+#    key: ""
+
+ota:
+  password: ""
+
+wifi:
+  ssid: ""
+  password: ""
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Domofon"
+    password: ""
+
+# Sync time with Home Assistant
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+captive_portal:
+
+binary_sensor:
+  # Definiuj piny GPIO
+  - platform: gpio
+    pin: 
+      number: GPIO13
+      inverted: True
+      mode:
+        input: true
+        pullup: false
+    id: wejscie1
+    on_click:
+    - min_length: 200ms
+      max_length: 400ms
+      then:
+        - lambda: |- 
+            id(dzwonek).publish_state("Otwarte");
+        - script.execute: reset_dzwonek
+    - min_length: 500ms
+      max_length: 700ms
+      then:
+        - lambda: |- 
+            id(dzwonek).publish_state("Podano zły kod");
+        - script.execute: reset_dzwonek
+    - min_length: 1000ms
+      max_length: 1500ms
+      then:
+        - lambda: |- 
+            id(dzwonek).publish_state("Dzwonek");
+        - script.execute: reset_dzwonek
+
+  - platform: gpio
+    pin: 
+      number: GPIO16
+      mode:
+        input: true
+        pulldown: true
+    id: wejscie2
+
+sensor:
+  # Wifi signal sensor
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+text_sensor:
+  - platform: template
+    name: "Dzwonek Sensor"
+    id: dzwonek
+
+switch:
+  # Switch to pick up th phone
+  - platform: gpio
+    id: pick_up
+    name: "Pick up"
+    pin: GPIO14
+
+  # Switch to open the gate
+  - platform: gpio
+    id: open_switch
+    name: "Open"
+    pin: GPIO12
+    on_turn_on:
+    - delay: 500ms
+    - switch.turn_off: open_switch
+
+  # Switch to mute
+  - platform: gpio
+    id: mute
+    name: "Mute"
+    pin: GPIO15
+
+  # Switch to restart
+  - platform: restart
+    name: "Domofon restart"
+
+script:
+  - id: reset_dzwonek
+    then:
+      - delay: 5s
+      - lambda: |- 
+          id(dzwonek).publish_state("off");
