@@ -3,9 +3,11 @@ Laskomex LM8 Home Assistant integration with PCB
 
 Integration is based on ESP8266 using Wemos D1 mini.
 Wemos with PCB sits in a custom printed holder (ESP-holder.stl).
+With that USB port is easy accessible through drilled hole on right side of Laskomex case.
 All connections are made through 3 SPDT relays.
 
-ESPHome (Domofon.yaml) sends the status to Home Assistant. Then Node-RED automations (flows.json) take care of all notifications and opening schema.
+ESPHome (Domofon.yaml) sends the status to Home Assistant. Then Node-RED automations (flows.json) takes care of all notifications and opening schema.
+Remenber to update api key, ota password and wifi setting in yaml file befor uploading to ESP.
 
 Incoming chime is based on optoisolator and voltage comparator to eliminate all insufficient signals.
 Than, based on signal duration, divided to 3 options: Door open, Wrong code, Ringing.
@@ -23,3 +25,5 @@ For this purpose, a separate microcontroller based on Arduino should be used - s
 Relays should be connected to the locations indicated on the schematic (Podlaczenie.jpg), 
 remembering to remove the measuring resistor in the volume control circuit - marked on the schematic as "X". 
 This connection allows us to use the handset even when the MUTE function is enabled - we retain full functionality of the intercom regardless of the Home Assistant settings.
+
+The complete build, components placing and final look are on IMG_9403 and IMG_9405 jpeg pictures.
