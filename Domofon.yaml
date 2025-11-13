@@ -36,40 +36,42 @@ captive_portal:
 binary_sensor:
   # Definiuj piny GPIO
   - platform: gpio
-    pin: 
+    pin:
       number: GPIO13
-      inverted: True
+      inverted: true
       mode:
         input: true
-        pullup: false
     id: wejscie1
+    name: "Przycisk domofonu"
     on_click:
-    - min_length: 200ms
-      max_length: 400ms
-      then:
-        - lambda: |- 
-            id(dzwonek).publish_state("Otwarte");
-        - script.execute: reset_dzwonek
-    - min_length: 500ms
-      max_length: 700ms
-      then:
-        - lambda: |- 
-            id(dzwonek).publish_state("Podano zły kod");
-        - script.execute: reset_dzwonek
-    - min_length: 1000ms
-      max_length: 1500ms
-      then:
-        - lambda: |- 
-            id(dzwonek).publish_state("Dzwonek");
-        - script.execute: reset_dzwonek
-
-  - platform: gpio
-    pin: 
-      number: GPIO16
-      mode:
-        input: true
-        pulldown: true
-    id: wejscie2
+      - min_length: 200ms
+        max_length: 600ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Otwarte"
+          - script.execute: reset_dzwonek
+      - min_length: 620ms
+        max_length: 1000ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Podano zły kod"
+          - script.execute: reset_dzwonek
+      - min_length: 1050ms
+        max_length: 1800ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Dzwonek"
+          - script.execute: reset_dzwonek
+#  - platform: gpio
+#    pin: 
+#      number: GPIO16
+#      mode:
+#        input: true
+#        pulldown: true
+#    id: wejscie2
 
 sensor:
   # Wifi signal sensor
@@ -83,7 +85,7 @@ text_sensor:
     id: dzwonek
 
 switch:
-  # Switch to pick up th phone
+  # Switch to pick up the phone
   - platform: gpio
     id: pick_up
     name: "Pick up"
@@ -95,8 +97,8 @@ switch:
     name: "Open"
     pin: GPIO12
     on_turn_on:
-    - delay: 500ms
-    - switch.turn_off: open_switch
+      - delay: 500ms
+      - switch.turn_off: open_switch
 
   # Switch to mute
   - platform: gpio
@@ -108,9 +110,30 @@ switch:
   - platform: restart
     name: "Domofon restart"
 
+button:
+  - platform: template
+    name: "Otwórz drzwi (HA)"
+    icon: "mdi:door-open"
+    on_press:
+      - script.execute: otworz_drzwi
+
 script:
   - id: reset_dzwonek
+    mode: restart
     then:
       - delay: 5s
-      - lambda: |- 
+      - text_sensor.template.publish:
+          id: dzwonek
+          state: "off"
+
+  - id: otworz_drzwi
+    mode: single
+    then:
+      - switch.turn_on: pick_up
+      - delay: 200ms
+      - switch.turn_on: open_switch
+      - delay: 400ms
+      - switch.turn_off: pick_up
+
+
           id(dzwonek).publish_state("off");
