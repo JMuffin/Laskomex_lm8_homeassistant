@@ -1,0 +1,178 @@
+esphome:
+  name: domofon
+  friendly_name: Domofon
+
+esp8266:
+  board: esp01_1m
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: "apikey"
+
+ota:
+  platform: esphome
+  password: "otapass"
+
+wifi:
+  ssid: "ssid"
+  password: "pass"
+  min_auth_mode: wpa2
+
+# Synchronizacja czasu z HA (niezbędna do harmonogramu nocnego)
+time:
+  - platform: homeassistant
+    id: ha_time
+    # Harmonogram wyciszania nocnego
+    on_time:
+      - seconds: 0
+        minutes: 15
+        hours: 0
+        then:
+          - if:
+              condition:
+                - switch.is_on: auto_mute_noc_switch
+              then:
+                - switch.turn_on: mute
+      - seconds: 0
+        minutes: 30
+        hours: 5
+        then:
+          - switch.turn_off: mute
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      inverted: true
+      mode:
+        input: true
+    id: wejscie1
+    name: "Przycisk domofonu"
+    on_click:
+      # KOD POPRAWNY (Otwarto)
+      - min_length: 200ms
+        max_length: 600ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Otwarte"
+          - script.execute: reset_dzwonek
+      
+      # BŁĘDNY KOD
+      - min_length: 620ms
+        max_length: 1000ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Podano zły kod"
+          - script.execute: reset_dzwonek
+
+      # DZWONEK (Główna logika auto-otwierania)
+      - min_length: 1050ms
+        max_length: 1800ms
+        then:
+          - text_sensor.template.publish:
+              id: dzwonek
+              state: "Dzwonek"
+          - if:
+              condition:
+                # Sprawdź czy jest noc (00:15 - 05:30) i czy auto-otwarcie nocne jest włączone
+                - all:
+                    - time.is_within_range:
+                        after: 00:15:00
+                        before: 05:30:00
+                    - switch.is_on: auto_otwarcie_noc_switch
+              then:
+                - logger.log: "Auto-otwarcie NOC"
+                - script.execute: otworz_drzwi
+              else:
+                - if:
+                    condition:
+                      - switch.is_on: auto_otwarcie_switch
+                    then:
+                      - logger.log: "Auto-otwarcie DZIEŃ"
+                      - script.execute: otworz_drzwi
+          - script.execute: reset_dzwonek
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+text_sensor:
+  - platform: template
+    name: "Status Domofonu"
+    id: dzwonek
+
+switch:
+  # Fizyczne wyjścia
+  - platform: gpio
+    id: pick_up
+    name: "Słuchawka (Podnieś)"
+    pin: GPIO14
+
+  - platform: gpio
+    id: open_switch
+    name: "Rygiel (Otwórz)"
+    pin: GPIO12
+    on_turn_on:
+      - delay: 500ms
+      - switch.turn_off: open_switch
+
+  - platform: gpio
+    id: mute
+    name: "Wyciszenie (Mute)"
+    pin: GPIO15
+
+  # Wirtualne przełączniki do sterowania logiką z Home Assistant
+  - platform: template
+    id: auto_otwarcie_switch
+    name: "Auto-otwieranie (Dzień)"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:door-auto"
+
+  - platform: template
+    id: auto_otwarcie_noc_switch
+    name: "Auto-otwieranie (Noc)"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:moon-waning-crescent"
+
+  - platform: template
+    id: auto_mute_noc_switch
+    name: "Automatyczne wyciszanie nocne"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: "mdi:volume-off"
+
+  - platform: restart
+    name: "Domofon restart"
+
+button:
+  - platform: template
+    name: "Otwórz drzwi teraz"
+    icon: "mdi:door-open"
+    on_press:
+      - script.execute: otworz_drzwi
+
+script:
+  - id: reset_dzwonek
+    mode: restart
+    then:
+      - delay: 5s
+      - text_sensor.template.publish:
+          id: dzwonek
+          state: "IDLE"
+
+  - id: otworz_drzwi
+    mode: single
+    then:
+      - switch.turn_on: pick_up
+      - delay: 400ms
+      - switch.turn_on: open_switch
+      - delay: 800ms
+      - switch.turn_off: pick_up
